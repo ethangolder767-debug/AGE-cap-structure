@@ -364,4 +364,14 @@
     renderInputs(inputs);
     setupCdssLever(inputs);
   }).catch(showError);
+
+  // Register the service worker so the app installs and works offline.
+  // The relative path keeps it inside this repository's folder on GitHub Pages.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function (err) {
+        console.warn('Service worker not registered:', err);
+      });
+    });
+  }
 })();
