@@ -104,13 +104,144 @@
     ]);
   }
 
-  function renderFirms(inputs) {
-    var f = C.exampleFirms(inputs);
+  function renderFirms(inputs, firmLDebt) {
+    var f = C.exampleFirms(inputs, firmLDebt);
     var box = $('firms');
     clear(box);
+    var isCase = firmLDebt === inputs.firms.firmLDebt;
     box.appendChild(firmTable('Firm U (no debt)', f.U, inputs.tax));
     box.appendChild(firmTable('Firm L (' + dollars(f.L.debt) + ' of debt at ' +
-      pct(inputs.firms.interestRate) + ')', f.L, inputs.tax));
+      pct(inputs.firms.interestRate) + (isCase ? ', the case' : '') + ')', f.L, inputs.tax));
+  }
+
+  // Short labels under a slider, e.g. $250k or $1M.
+  function short(x) {
+    if (x >= 1e6) return '$' + fmt(x / 1e6, x % 1e6 === 0 ? 0 : 2) + 'M';
+    if (x >= 1e3) return '$' + fmt(x / 1e3, x % 1e3 === 0 ? 0 : 1) + 'k';
+    return dollars(x);
+  }
+  function ticks(id, values) {
+    var box = $(id);
+    clear(box);
+    values.forEach(function (v) { box.appendChild(el('span', {}, [short(v)])); });
+  }
+
+  // ---------- Levers ----------
+
+  function setupFirmLever(inputs) {
+    var stops = C.firmLStops(inputs.firms);
+    var slider = $('firm-l-debt');
+    slider.max = String(stops.length - 1);
+    ticks('firm-l-ticks', stops);
+    $('firm-l-rate-note').textContent = 'The interest rate is held at ' + pct(inputs.firms.interestRate) +
+      ' at every amount, so the slider shows what debt does to Firm L\'s return and risk, ' +
+      'not how lenders would respond to more borrowing.';
+    var caseIndex = stops.indexOf(inputs.firms.firmLDebt);
+    $('btn-case').textContent = 'Case (' + dollars(inputs.firms.firmLDebt) + ')';
+
+    function update() {
+      var debt = stops[Number(slider.value)];
+      $('firm-l-debt-out').textContent = dollars(debt);
+      slider.setAttribute('aria-valuetext', dollars(debt));
+      renderFirms(inputs, debt);
+    }
+    slider.addEventListener('input', update);
+    $('btn-case').addEventListener('click', function () {
+      if (caseIndex >= 0) { slider.value = String(caseIndex); update(); }
+    });
+    // If the case amount isn't on the slider, show it anyway and say so.
+    if (caseIndex >= 0) {
+      slider.value = String(caseIndex);
+      update();
+    } else {
+      $('firm-l-debt-out').textContent = dollars(inputs.firms.firmLDebt);
+      renderFirms(inputs, inputs.firms.firmLDebt);
+      $('btn-case').disabled = true;
+    }
+  }
+
+  function setupCdssLever(inputs) {
+    var rows = C.cdssTable(inputs);
+    var s = C.cdssSummary(rows);
+    var debts = rows.map(function (x) { return x.debt; });
+    var slider = $('cdss-debt');
+    slider.max = String(rows.length - 1);
+    ticks('cdss-ticks', debts);
+
+    function update(note) {
+      var row = rows[Number(slider.value)];
+      $('cdss-debt-out').textContent = dollars(row.debt);
+      slider.setAttribute('aria-valuetext', dollars(row.debt));
+      $('button-note').textContent = note || '';
+      renderNow(inputs, row);
+      renderCdssTables(rows, s, row.debt);
+    }
+    function goTo(caseDebt, newDebt, what) {
+      var t = C.chooseTarget(caseDebt, newDebt);
+      if (t.debt === null) return;
+      slider.value = String(debts.indexOf(t.debt));
+      update(t.split
+        ? 'The two buyback methods disagree on the ' + what + ': ' + dollars(t.caseDebt) +
+          ' with the $20 buyback and ' + dollars(t.newDebt) +
+          ' with the new-price buyback. The slider shows the $20 buyback\'s amount.'
+        : 'Both buyback methods give the ' + what + ' at ' + dollars(t.debt) + ' of debt.');
+    }
+
+    slider.addEventListener('input', function () { update(); });
+    $('btn-best').addEventListener('click', function () {
+      goTo(s.bestPriceCase, s.bestPriceNew, 'highest share price');
+    });
+    $('btn-eps').addEventListener('click', function () {
+      goTo(s.highestEpsCase, s.highestEpsNew, 'highest EPS');
+    });
+
+    var start = debts.indexOf(inputs.cdss.debt);
+    slider.value = String(start >= 0 ? start : 0);
+    update();
+    renderSummary(s);
+    renderWarnings(C.cdssWarnings(inputs, rows));
+  }
+
+  // The side-by-side readout for the slider's amount of debt.
+  function stakeText(m) {
+    if (m.status === 'over') return 'Not possible';
+    return pct(m.stake);
+  }
+  function stakeNote(m) {
+    if (m.status === 'all') return 'Every outside share is bought back, so no outside shareholders would be left.';
+    if (m.status === 'over') return 'The buyback needs more shares than outside investors own, so management would have to sell.';
+    return null;
+  }
+
+  function methodCard(title, method, row, waccLabel) {
+    var items = [
+      ['Share price', cents(method.price)],
+      ['Shares repurchased', shares(method.repurchased)],
+      ['Shares remaining', shares(method.remaining)],
+      ['EPS', cents(method.eps)],
+      ['Dividends per share', cents(method.dps)],
+      ['TIE', times(row.tie)],
+      [waccLabel, pct(method.wacc)],
+      ['Management\'s share', stakeText(method.management)]
+    ];
+    var note = stakeNote(method.management);
+    return el('article', { class: 'card' }, [
+      el('h4', {}, [title]),
+      el('dl', {}, items.map(function (it) {
+        return el('div', {}, [el('dt', {}, [it[0]]), el('dd', {}, [it[1]])]);
+      })),
+      note ? el('p', { class: 'card-note' }, [note]) : null
+    ]);
+  }
+
+  function renderNow(inputs, row) {
+    $('cdss-now-common').textContent = 'At ' + dollars(row.debt) + ' of debt: r_d ' +
+      (row.costOfDebt === null ? '—' : pct(row.costOfDebt)) + ', r_s ' + pct(row.costOfEquity) +
+      ', interest ' + dollars(row.interest) + ', net income ' + dollars(row.netIncome) + '.';
+    $('cdss-now').replaceChildren(
+      methodCard('Buy back at today\'s ' + cents(inputs.cdss.price) + ' (case method)', row.caseMethod, row, 'WACC (book weights)'),
+      methodCard('Buy back at the new price', row.newPriceMethod, row, 'WACC (market weights)')
+    );
   }
 
   // ---------- Question d: CDSS ----------
@@ -136,13 +267,14 @@
 
   // A table that turns into stacked cards on a phone. Each cell carries its
   // column name in data-label so the card can show it.
-  function dataTable(columns, rows, bestDebt) {
+  function dataTable(columns, rows, bestDebt, selectedDebt) {
     var thead = el('thead', {}, [el('tr', {}, columns.map(function (col) {
       return el('th', { scope: 'col' }, [col.label]);
     }))]);
     var tbody = el('tbody', {}, rows.map(function (row) {
       var isBest = row.debt === bestDebt;
-      return el('tr', isBest ? { class: 'best' } : {}, columns.map(function (col, i) {
+      var cls = [isBest ? 'best' : '', row.debt === selectedDebt ? 'selected' : ''].join(' ').trim();
+      return el('tr', cls ? { class: cls } : {}, columns.map(function (col, i) {
         var kids = [col.get(row)];
         if (i === 0 && isBest) kids.push(el('span', { class: 'badge' }, ['highest price']));
         var attrs = { 'data-label': col.label };
@@ -153,10 +285,7 @@
     return el('table', { class: 'data-table' }, [thead, tbody]);
   }
 
-  function renderCdss(inputs) {
-    var rows = C.cdssTable(inputs);
-    var s = C.cdssSummary(rows);
-
+  function renderCdssTables(rows, s, selectedDebt) {
     var debtCol = { label: 'Debt', get: function (x) { return dollars(x.debt); } };
 
     $('earnings').replaceChildren(dataTable([
@@ -166,7 +295,7 @@
       { label: 'Interest', get: function (x) { return dollars(x.interest); } },
       { label: 'Net income', get: function (x) { return dollars(x.netIncome); } },
       { label: 'TIE', get: function (x) { return times(x.tie); } }
-    ], rows, null));
+    ], rows, null, selectedDebt));
 
     $('case-method').replaceChildren(dataTable([
       debtCol,
@@ -176,7 +305,7 @@
       { label: 'TIE', get: function (x) { return times(x.tie); } },
       { label: 'Share price', get: function (x) { return cents(x.caseMethod.price); } },
       { label: 'WACC (book weights)', get: function (x) { return pct(x.caseMethod.wacc); } }
-    ], rows, s.bestPriceCase));
+    ], rows, s.bestPriceCase, selectedDebt));
 
     $('new-method').replaceChildren(dataTable([
       debtCol,
@@ -188,10 +317,7 @@
       { label: 'EPS', get: function (x) { return cents(x.newPriceMethod.eps); } },
       { label: 'TIE', get: function (x) { return times(x.tie); } },
       { label: 'WACC (market weights)', get: function (x) { return pct(x.newPriceMethod.wacc); } }
-    ], rows, s.bestPriceNew));
-
-    renderSummary(s);
-    renderWarnings(C.cdssWarnings(inputs, rows));
+    ], rows, s.bestPriceNew, selectedDebt));
   }
 
   function renderSummary(s) {
@@ -234,8 +360,8 @@
   }
 
   load().then(function (inputs) {
-    renderFirms(inputs);
+    setupFirmLever(inputs);
     renderInputs(inputs);
-    renderCdss(inputs);
+    setupCdssLever(inputs);
   }).catch(showError);
 })();

@@ -20,12 +20,42 @@
     <section aria-labelledby="c-title">
       <h2 id="c-title">Question c: Firm U and Firm L</h2>
       <p>Two firms with the same assets and the same EBIT in each kind of year. Firm L borrows; Firm U doesn't. ROE uses book equity (assets − debt). TIE is EBIT ÷ interest, so it is n/a for a firm with no interest.</p>
+      <div class="lever">
+        <div class="lever-head">
+          <label for="firm-l-debt">Firm L's debt</label>
+          <output id="firm-l-debt-out" for="firm-l-debt"></output>
+        </div>
+        <input type="range" id="firm-l-debt" min="0" step="1">
+        <div id="firm-l-ticks" class="ticks" aria-hidden="true"></div>
+        <div class="buttons">
+          <button type="button" id="btn-case">Case</button>
+        </div>
+        <p id="firm-l-rate-note" class="hint"></p>
+      </div>
       <div id="firms" class="firms"></div>
     </section>
 
     <section aria-labelledby="d-title">
       <h2 id="d-title">Question d: CDSS at each amount of borrowing</h2>
       <dl id="cdss-inputs" class="inputs"></dl>
+
+      <h3>Move CDSS's debt</h3>
+      <p>The slider stops only at the banker's amounts, because the banker gave no costs of debt or equity in between.</p>
+      <div class="lever">
+        <div class="lever-head">
+          <label for="cdss-debt">CDSS's debt</label>
+          <output id="cdss-debt-out" for="cdss-debt"></output>
+        </div>
+        <input type="range" id="cdss-debt" min="0" step="1">
+        <div id="cdss-ticks" class="ticks" aria-hidden="true"></div>
+        <div class="buttons">
+          <button type="button" id="btn-best">Best price</button>
+          <button type="button" id="btn-eps">Highest EPS</button>
+        </div>
+        <p id="button-note" class="hint" role="status"></p>
+      </div>
+      <p id="cdss-now-common" class="common"></p>
+      <div id="cdss-now" class="compare"></div>
 
       <h3>Earnings at each amount of debt</h3>
       <p>EBIT stays the same at every amount of debt. Interest = r<sub>d</sub> × debt. Net income = (EBIT − interest) × (1 − T). CDSS pays out all its earnings, so dividends per share = EPS and g = 0.</p>

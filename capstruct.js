@@ -230,17 +230,47 @@
       caseMethod: {
         valid: caseValid,
         repurchased: caseRepurchased, remaining: caseRemaining,
-        eps: caseEps, dps: caseEps, price: casePrice, wacc: waccBook
+        eps: caseEps, dps: caseEps, price: casePrice, wacc: waccBook,
+        management: managementStake(c, caseRepurchased, caseRemaining)
       },
       newPriceMethod: {
         equityValue: S, firmValue: V,
         repurchased: newRepurchased, remaining: newRemaining,
         eps: newEps, dps: newEps, price: newPrice, wacc: waccMarket,
+        management: managementStake(c, newRepurchased, newRemaining),
         // Checks from CLAUDE.md: EPS = r_s × P, and WACC = EBIT(1 − T) / V.
         epsCheck: rs * newPrice,
         waccCheck: (ebit * (1 - tax)) / V
       }
     };
+  }
+
+  // Management's share of the company after the buyback. Management doesn't
+  // sell, so only outside investors' shares can be bought back.
+  //   status 'ok'   → stake = management's shares / shares remaining
+  //   status 'all'  → the buyback takes every outside share: 100%
+  //   status 'over' → the buyback needs more shares than outsiders own
+  function managementStake(c, repurchased, remaining) {
+    var mgmtShares = c.managementShare * c.shares;
+    var outsideShares = c.shares - mgmtShares;
+    var tol = 1e-9 * c.shares;
+    if (repurchased > outsideShares + tol) return { status: 'over', stake: null };
+    if (Math.abs(repurchased - outsideShares) <= tol) return { status: 'all', stake: 1 };
+    return { status: 'ok', stake: mgmtShares / remaining };
+  }
+
+  // Where a button should move the CDSS slider. The case method's amount
+  // wins when the two methods disagree; the page then names both.
+  function chooseTarget(caseDebt, newDebt) {
+    return { debt: caseDebt, split: caseDebt !== newDebt, caseDebt: caseDebt, newDebt: newDebt };
+  }
+
+  // The Firm L slider's stops: 0 to slider_max in steps of slider_step.
+  function firmLStops(firms) {
+    var stops = [];
+    var count = Math.floor(firms.sliderMax / firms.sliderStep + 1e-9);
+    for (var i = 0; i <= count; i++) stops.push(i * firms.sliderStep);
+    return stops;
   }
 
   function cdssTable(inputs, schedule) {
@@ -318,7 +348,10 @@
     cdssRow: cdssRow,
     cdssTable: cdssTable,
     cdssSummary: cdssSummary,
-    cdssWarnings: cdssWarnings
+    cdssWarnings: cdssWarnings,
+    managementStake: managementStake,
+    chooseTarget: chooseTarget,
+    firmLStops: firmLStops
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
