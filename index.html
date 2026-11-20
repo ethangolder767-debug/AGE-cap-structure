@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AGE Capital Structure</title>
+  <meta name="description" content="Campus Deli and Sub Shop's capital structure, from the AGE case.">
+  <meta name="theme-color" content="#1e3a5f">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-title" content="AGE Cap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <p class="eyebrow">FIN 4150 · AGE case</p>
+    <h1>Capital structure for Campus Deli and Sub Shop</h1>
+    <p class="lede">Every number below is worked out in your browser from the CSV files in this app's <code>data/</code> folder. Nothing is sent anywhere.</p>
+  </header>
+
+  <main>
+    <div id="warnings" class="warnings" role="alert" hidden></div>
+
+    <section aria-labelledby="c-title">
+      <h2 id="c-title">Question c: Firm U and Firm L</h2>
+      <p>Two firms with the same assets and the same EBIT in each kind of year. Firm L borrows; Firm U doesn't. ROE uses book equity (assets − debt). TIE is EBIT ÷ interest, so it is n/a for a firm with no interest.</p>
+      <div class="lever">
+        <div class="lever-head">
+          <label for="firm-l-debt">Firm L's debt</label>
+          <output id="firm-l-debt-out" for="firm-l-debt"></output>
+        </div>
+        <input type="range" id="firm-l-debt" min="0" step="1">
+        <div id="firm-l-ticks" class="ticks" aria-hidden="true"></div>
+        <div class="buttons">
+          <button type="button" id="btn-case">Case</button>
+        </div>
+        <p id="firm-l-rate-note" class="hint"></p>
+      </div>
+      <div id="firms" class="firms"></div>
+    </section>
+
+    <section aria-labelledby="d-title">
+      <h2 id="d-title">Question d: CDSS at each amount of borrowing</h2>
+      <dl id="cdss-inputs" class="inputs"></dl>
+
+      <h3>Move CDSS's debt</h3>
+      <p>The slider stops only at the banker's amounts, because the banker gave no costs of debt or equity in between.</p>
+      <div class="lever">
+        <div class="lever-head">
+          <label for="cdss-debt">CDSS's debt</label>
+          <output id="cdss-debt-out" for="cdss-debt"></output>
+        </div>
+        <input type="range" id="cdss-debt" min="0" step="1">
+        <div id="cdss-ticks" class="ticks" aria-hidden="true"></div>
+        <div class="buttons">
+          <button type="button" id="btn-best">Best price</button>
+          <button type="button" id="btn-eps">Highest EPS</button>
+        </div>
+        <p id="button-note" class="hint" role="status"></p>
+      </div>
+      <p id="cdss-now-common" class="common"></p>
+      <div id="cdss-now" class="compare"></div>
+
+      <h3>Earnings at each amount of debt</h3>
+      <p>EBIT stays the same at every amount of debt. Interest = r<sub>d</sub> × debt. Net income = (EBIT − interest) × (1 − T). CDSS pays out all its earnings, so dividends per share = EPS and g = 0.</p>
+      <div id="earnings" class="table-box"></div>
+
+      <h3>Case method: buy back at today's $20 (questions d(3) and d(4))</h3>
+      <p>Shares repurchased = debt ÷ $20. EPS = net income ÷ shares remaining. Price = EPS ÷ r<sub>s</sub>. WACC uses book weights: debt ÷ total assets and equity ÷ total assets.</p>
+      <div id="case-method" class="table-box"></div>
+
+      <h3>New-price method: buy back at the price after the announcement</h3>
+      <p>Equity value S = net income ÷ r<sub>s</sub>. Firm value V = S + debt. Price = V ÷ 100,000 shares, and the buyback happens at that price. WACC uses market weights: debt ÷ V and S ÷ V.</p>
+      <div id="new-method" class="table-box"></div>
+
+      <h3>Where each measure points</h3>
+      <ul id="summary-list" class="summary"></ul>
+      <p id="summary-note" class="note"></p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Built for FIN 4150 at Utah Tech University. The figures come from the AGE case; the app makes no requests to other websites.</p>
+  </footer>
+
+  <script src="capstruct.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
